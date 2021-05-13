@@ -5,11 +5,10 @@
 
 import rospy
 import os
-import json
 import numpy as np
 import time
 import sys
-
+import csv
 
 from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
@@ -113,25 +112,27 @@ class LinearDeepQNetwork(nn.Module):
 class ReinforceAgent():
     def __init__(self, state_size, action_size):
         self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
-        self.dirPath = os.path.dirname(os.path.realpath(__file__))
-        self.dirPath = self.dirPath.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/stage_4_')
+        self.Path = os.path.dirname(os.path.realpath(__file__))
+        self.dirPath = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/torch_model/stage_4_')
+        self.resultPATH = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/result/result.csv')
         self.result = Float32MultiArray()
 
         self.load_model = True
-        self.load_episode = 0
+        self.load_episode = 260
         self.state_size = state_size
         self.observation_space = (self.state_size,)
 
         self.action_size = action_size
         self.action_space = np.arange(0,5,1) # for similar to gym (action index for scling)
         
-        
+        #for loging only, enter the day of run
+        self.day = 1305
         
         self.episode_step = 6000
         self.target_update = 2000
         self.discount_factor = 0.99
         self.learning_rate = 0.00025
-        self.epsilon = 1.0
+        self.epsilon = 1.0 # for exploration and exploitation dilema
         self.epsilon_decay = 0.99
         self.epsilon_min = 0.05
         self.batch_size = 64
@@ -140,21 +141,18 @@ class ReinforceAgent():
         self.global_step = 0
         
         self.mem_size = 1000000
-        #self.memory = deque(maxlen=1000000)
         self.memory = ReplayBuffer(self.mem_size, self.observation_space,self.batch_size) #replay memory
         
         self.model = LinearDeepQNetwork(self.learning_rate,  self.action_size, self.observation_space) #action-value function Q
         self.target_model = LinearDeepQNetwork(self.learning_rate,  self.action_size, self.observation_space) # target action-value funtion Q^
-        #self.model = self.buildModel()
-        #self.target_model = self.buildModel()
+
         
         self.updateTargetModel()
-
+        #Tien: TODO: Load trained model'
         if self.load_model:
-            'Tien: TODO: Load trained model'
-        #     with open(self.dirPath + str(self.load_episode) + '.json') as outfile:
-        #         param = json.load(outfile)
-        #         self.epsilon = param.get('epsilon')
+            model = T.load(self.dirPath + str(self.load_episode) + '.pt')
+            model.eval()
+            #TODO: Load previos epsilon self.epsilon = 0.99 
         
         
     #set weights of neurons to target model
@@ -177,13 +175,10 @@ class ReinforceAgent():
     #using ReplayBuffer    
     def store_trasition(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
-    #def appendMemory(self, state, action, reward, next_state, done):
-    #   self.memory.append((state, action, reward, next_state, done))
-    
-    print ("------Not training---------")
+
     def learn(self):
-        
         if (self.memory.mem_cntr < self.train_start): #only learn when mem have something /
+            print ("------Not training---------")
             return
         
         self.model.optimizer.zero_grad() #0 the gradient b4 back propragation(only in pytorch)
@@ -198,7 +193,7 @@ class ReinforceAgent():
         
         states = T.tensor(states, dtype= T.float).to(self.model.device) # turn np.array to pytorch tensor
         states_ = T.tensor(states_, dtype= T.float).to(self.model.device)        
-        rewards = T.tensor(rewards).to(self.model.device)
+        rewards = T.tensor(rewards).to(self.model.device) # tensor([batchsize])
         terminals = T.tensor(terminals).to(self.model.device)   
         #actions = T.tensor(actions).to(self.model.device) # dont need to be a tensor
         '''Perform feedforward to compare: estimate value of current state (state) toward the max value of next state(states_)'''             
@@ -213,8 +208,8 @@ class ReinforceAgent():
             q_next = self.model.forward(states_)
             
         q_next [terminals] = 0.0 # if done. next Q value  = reward
-        #q_next [terminals] = 0
-        q_target = rewards + self.discount_factor * T.max(q_next) # TD target
+
+        q_target = rewards + self.discount_factor * T.max(q_next,dim =1) [0] # TD target: maximum along 64 rows dim=1, [0] only value not index
         
         #print (q_target)
         loss = self.model.loss(q_target, q_prediction).to(self.model.device) # is the TD error
@@ -263,18 +258,24 @@ if __name__ == '__main__':
             get_action.data = [action, score, reward]
             pub_get_action.publish(get_action)
 
-            #if e % 10 == 0: #save model after each 10 ep.
-            #   PATH = 'tien/thesis_catkin_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/save_model/torch_model'
-            #  T.save(agent.model, PATH)
-                
-
-            if t >= 500: #take so long to reach goal
+            if t >= 500: #take so long to reach goal: timeout
                 rospy.loginfo("Time out!!")
                 done = True
 
             if done:
+                #TODO logging data
                 #result.data = [score, np.max(agent.q_prediction)]
                 #pub_result.publish(result)
+                csvRow = [score, e, agent.day]
+                with open(agent.resultPATH, 'a') as f:
+                    # create the csv writer
+                    writer = csv.writer(f)
+                    # write a row to the csv file
+                    writer.writerow(csvRow)
+                
+                if e % 10 == 0: #save model after each 10 ep.
+                    T.save(agent.model, agent.dirPath + str(e) + '.pt')
+                    print ('Saved model at episode', e)                    
                 agent.updateTargetModel()
                 scores.append(score)
                 episodes.append(e)
@@ -286,6 +287,7 @@ if __name__ == '__main__':
                 param_keys = ['epsilon']
                 param_values = [agent.epsilon]
                 param_dictionary = dict(zip(param_keys, param_values))
+                
                 break
 
             agent.global_step += 1

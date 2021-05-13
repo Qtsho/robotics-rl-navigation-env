@@ -1,6 +1,4 @@
-import numpy as np
 
-x = np.empty([0, 10], dtype=np.int)
 
+x = 999e-3
 print (x)
-
