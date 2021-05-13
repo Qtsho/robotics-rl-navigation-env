@@ -13,18 +13,18 @@ import csv
 from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from std_msgs.msg import Float32MultiArray
-from src.turtlebot3_dqn.environment_stage_thesis import Env
+from src.turtlebot3_dqn.environment_heros import Env
 
 EPISODES = 3000
 
 import torch as T
-
-
-import numpy as np
-
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+
+import numpy as np
+
+
 class ReplayBuffer():
     def __init__(self, max_size, input_dims, batch_size):
         self.mem_size = max_size
@@ -113,17 +113,17 @@ class ReinforceAgent():
     def __init__(self, state_size, action_size):
         self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
         self.Path = os.path.dirname(os.path.realpath(__file__))
-        self.dirPath = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/torch_model/stage_4_')
-        self.resultPATH = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/result/result.csv')
+        self.dirPath = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/torch_model/heros_stage_4_')
+        self.resultPATH = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/result/result_heros.csv')
         self.result = Float32MultiArray()
 
-        self.load_model = True
-        self.load_episode = 260
+        self.load_model = False
+        self.load_episode = 0
         self.state_size = state_size
         self.observation_space = (self.state_size,)
 
         self.action_size = action_size
-        self.action_space = np.arange(0,5,1) # for similar to gym (action index for scling)
+        self.action_space = np.arange(0,self.action_size,1) # for similar to gym (action index for scling)
         
         #for loging only, enter the day of run
         self.day = 1305
@@ -135,7 +135,7 @@ class ReinforceAgent():
         self.discount_factor = 0.99
         self.learning_rate = 0.00025
         self.epsilon = 1.0 # for exploration and exploitation dilema
-        self.epsilon_decay = 0.99
+        self.epsilon_decay = 0.999
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = self.batch_size # start learning as soon as fill up the batch size
@@ -233,8 +233,8 @@ if __name__ == '__main__':
     #result = Float32MultiArray()
     get_action = Float32MultiArray()
 
-    state_size = 28
-    action_size = 5 #must be odd number
+    state_size = 364
+    action_size = 9 #must be odd number
     rospy.logdebug("------Init ENV")
     env = Env(action_size)
 

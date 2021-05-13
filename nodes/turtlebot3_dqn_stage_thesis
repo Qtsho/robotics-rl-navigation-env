@@ -120,9 +120,8 @@ class ReinforceAgent():
                 rewards = mini_batch[i][2]
                 next_states = mini_batch[i][3]
                 dones = mini_batch[i][4]
-
+                
                 q_value = self.model.predict(states.reshape(1, len(states)))
-                #pytorch Q.foward
                 self.q_value = q_value
 
                 if target:

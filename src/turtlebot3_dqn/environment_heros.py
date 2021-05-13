@@ -21,12 +21,14 @@ class Env():
         self.heading = 0
         self.action_size = action_size
         self.max_scan = 5.5
+        self.goal_tolerance = 0.5
+        
         self.initGoal = True
         self.get_goalbox = False
         self.position = Pose()
         self.pub_cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=5)
         self.sub_odom = rospy.Subscriber('odom', Odometry, self.getOdometry)
-        self.reset_proxy = rospy.ServiceProxy('gazebo/reset_simulation', Empty)
+        self.reset_proxy = rospy.ServiceProxy('gazebo/reset_world', Empty)
         self.unpause_proxy = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
         self.pause_proxy = rospy.ServiceProxy('gazebo/pause_physics', Empty)
         self.respawn_goal = Respawn()
@@ -56,7 +58,7 @@ class Env():
     def getState(self, scan):
         scan_range = []
         heading = self.heading
-        min_range = 0.13
+        min_range = 0.5
         done = False
 
         for i in range(len(scan.ranges)):
@@ -74,7 +76,7 @@ class Env():
             done = True
 
         current_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y),2)
-        if current_distance < 0.2:
+        if current_distance < self.goal_tolerance:
             self.get_goalbox = True
 
         return scan_range + [heading, current_distance, obstacle_min_range, obstacle_angle], done
@@ -85,7 +87,7 @@ class Env():
         current_distance = state[-3]
         heading = state[-4]
 
-        for i in range(5):
+        for i in range(self.action_size):
             angle = -pi / 4 + heading + (pi / 8 * i) + pi / 2
             tr = 1 - 4 * math.fabs(0.5 - math.modf(0.25 + 0.5 * angle % (2 * math.pi) / math.pi)[0])
             yaw_reward.append(tr)
@@ -97,7 +99,7 @@ class Env():
         else:
             ob_reward = 0
 
-        reward = ((round(yaw_reward[action] * 5, 2)) * distance_rate) + ob_reward
+        reward = ((round(yaw_reward[action] * self.action_size, 2)) * distance_rate) + ob_reward
 
         if done:
             rospy.loginfo("Collision!!")
@@ -129,7 +131,7 @@ class Env():
             print("gazebo/unpause_physics service call failed")
 
     def step(self, action):
-        max_angular_vel = 1.5
+        max_angular_vel = 0.5
         ang_vel = ((self.action_size - 1)/2 - action) * max_angular_vel * 0.5
         lin_vel = ((self.action_size - 1)/2 - action) * max_angular_vel * 0.5
     
