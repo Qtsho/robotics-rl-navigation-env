@@ -91,7 +91,9 @@ class LinearDeepQNetwork(nn.Module):
         # 3: define the training devices and send it to the device.: torch.device
         
         self.fc1 = nn.Linear(*input_dims, 256)
-        self.fc2 = nn.Linear (256, n_actions)
+        self.fc2 = nn.Linear (256, 256)
+        self.dropout = nn.Dropout(0.2)
+        self.fc3 = nn.Linear (256, n_actions)
         #choose gradient decent method for backward propergation
         self.optimizer = optim.Adam(self.parameters(),lr = lr)
         self.loss = nn.MSELoss()
@@ -105,7 +107,12 @@ class LinearDeepQNetwork(nn.Module):
     def forward(self, state):
         
         layer1 = F.relu (self.fc1(state))
-        out_actions = self.fc2(layer1)
+        layer2 = F.relu(self.fc2(layer1))
+        
+        # Apply dropout
+        drop_out = self.dropout(layer2)
+        
+        out_actions = self.fc3(drop_out)
         
         return out_actions
 
@@ -117,8 +124,8 @@ class ReinforceAgent():
         self.resultPATH = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/result/result.csv')
         self.result = Float32MultiArray()
 
-        self.load_model = True
-        self.load_episode = 260
+        self.load_model = False
+        self.load_episode = 0
         self.state_size = state_size
         self.observation_space = (self.state_size,)
 
@@ -126,7 +133,7 @@ class ReinforceAgent():
         self.action_space = np.arange(0,5,1) # for similar to gym (action index for scling)
         
         #for loging only, enter the day of run
-        self.day = 1305
+        self.day = 1905
         
         '''Hyperparameters'''
         
@@ -147,8 +154,9 @@ class ReinforceAgent():
         
         self.model = LinearDeepQNetwork(self.learning_rate,  self.action_size, self.observation_space) #action-value function Q
         self.target_model = LinearDeepQNetwork(self.learning_rate,  self.action_size, self.observation_space) # target action-value funtion Q^
-
         
+        print(self.model)
+
         self.updateTargetModel()
         #Tien: TODO: Load trained model'
         if self.load_model:
@@ -168,10 +176,10 @@ class ReinforceAgent():
             action = np.random.choice(self.action_space)
         else:
             state = T.tensor(observation,dtype= T.float).to(self.model.device) # turn to pytorch tensor           
-            actions = self.model.forward(state) # pass to dqn, this is q value
+            actions = self.model(state) # pass to dqn, this is q value, same as self.model.forward(state)
             
-            action = T.argmax(actions).item() # Tien: item will take the tensor back to env: interger 
-            #print (actions, action, type(action))
+            action =T.argmax(actions).item() # Tien: item will take the tensor back to env: interger 
+            print ("Action chose:",  action)
         return action
 
     
@@ -203,12 +211,12 @@ class ReinforceAgent():
         #we want the delta between action the agent actually took and max action
         # batch index loop trhough all state
         
-        q_prediction = self.model.forward(states)[batch_index, actions] # 64 q_value that actions took from states. [] is dereferencing/ array slicing. Only update value from took actions
+        q_prediction = self.model(states)[batch_index, actions] # 64 q_value that actions took from states. [] is dereferencing/ array slicing. Only update value from took actions
         
         if target:
-            q_next = self.target_model.forward(states_)
+            q_next = self.target_model(states_)
         else:
-            q_next = self.model.forward(states_)
+            q_next = self.model(states_)
             
         q_next [terminals] = 0.0 # if done. next Q value  = reward
 
@@ -217,7 +225,7 @@ class ReinforceAgent():
         #print (q_target)
         loss = self.model.loss(q_target, q_prediction).to(self.model.device) # is the TD error
         loss.backward() # back propagate
-        self.model.optimizer.step()
+        self.model.optimizer.step() # update model weights
         
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
@@ -275,7 +283,7 @@ if __name__ == '__main__':
                     writer = csv.writer(f)
                     # write a row to the csv file
                     writer.writerow(csvRow)
-                
+                f.close()
                 if e % 10 == 0: #save model after each 10 ep.
                     T.save(agent.model, agent.dirPath + str(e) + '.pt')
                     print ('Saved model at episode', e)                    
@@ -290,7 +298,6 @@ if __name__ == '__main__':
                 param_keys = ['epsilon']
                 param_values = [agent.epsilon]
                 param_dictionary = dict(zip(param_keys, param_values))
-                
                 break
 
             agent.global_step += 1

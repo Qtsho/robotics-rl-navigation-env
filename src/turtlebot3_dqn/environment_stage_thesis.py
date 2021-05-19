@@ -25,7 +25,7 @@ class Env():
         self.get_goalbox = False
         self.position = Pose()
         self.pub_cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=5)
-        self.sub_odom = rospy.Subscriber('odom', Odometry, self.getOdometry)
+        self.sub_odom = rospy.Subscriber('odom', Odometry, self.getOdometry) # altomatically jump to callback
         self.reset_proxy = rospy.ServiceProxy('gazebo/reset_simulation', Empty)
         self.unpause_proxy = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
         self.pause_proxy = rospy.ServiceProxy('gazebo/pause_physics', Empty)
@@ -39,7 +39,7 @@ class Env():
     def getOdometry(self, odom):
         self.position = odom.pose.pose.position
         orientation = odom.pose.pose.orientation
-        orientation_list = [orientation.x, orientation.y, orientation.z, orientation.w]
+        orientation_list = [orientation.x, orientation.y, orientation.z, orientation.w] # a list of orientation as quaternion
         _, _, yaw = euler_from_quaternion(orientation_list)
 
         goal_angle = math.atan2(self.goal_y - self.position.y, self.goal_x - self.position.x)
@@ -85,12 +85,12 @@ class Env():
         current_distance = state[-3]
         heading = state[-4]
 
-        for i in range(5):
+        for i in range(5):  #reward for heading to goal
             angle = -pi / 4 + heading + (pi / 8 * i) + pi / 2
             tr = 1 - 4 * math.fabs(0.5 - math.modf(0.25 + 0.5 * angle % (2 * math.pi) / math.pi)[0])
             yaw_reward.append(tr)
 
-        distance_rate = 2 ** (current_distance / self.goal_distance)
+        distance_rate = 2 ** (current_distance / self.goal_distance) #reward for distance to goal
 
         if obstacle_min_range < 0.5: #reward for obstacle avoidance
             ob_reward = -5
@@ -131,7 +131,7 @@ class Env():
     def step(self, action):
         max_angular_vel = 1.5
         ang_vel = ((self.action_size - 1)/2 - action) * max_angular_vel * 0.5
-        lin_vel = ((self.action_size - 1)/2 - action) * max_angular_vel * 0.5
+        #lin_vel = ((self.action_size - 1)/2 - action) * max_angular_vel * 0.5
     
         vel_cmd = Twist()
         vel_cmd.linear.x = 0.15
@@ -143,11 +143,11 @@ class Env():
             try:
                 data = rospy.wait_for_message('scan', LaserScan, timeout=5)
             except:
+                print ("Error while waiting laser message!")
                 pass
 
         state, done = self.getState(data)
         reward = self.setReward(state, done, action)
-
         return np.asarray(state), reward, done
 
     def reset(self):
@@ -162,6 +162,7 @@ class Env():
             try:
                 data = rospy.wait_for_message('scan', LaserScan, timeout=5)
             except:
+                print ("Error while waiting laser message!")
                 pass
 
         if self.initGoal:
