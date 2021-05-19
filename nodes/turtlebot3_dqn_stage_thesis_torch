@@ -124,8 +124,8 @@ class ReinforceAgent():
         self.resultPATH = self.Path.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/result/result.csv')
         self.result = Float32MultiArray()
 
-        self.load_model = False
-        self.load_episode = 0
+        self.load_model = True
+        self.load_episode = 250
         self.state_size = state_size
         self.observation_space = (self.state_size,)
 
@@ -160,6 +160,8 @@ class ReinforceAgent():
         self.updateTargetModel()
         #Tien: TODO: Load trained model'
         if self.load_model:
+            self.epsilon = 0.3
+            self.global_step = self.load_episode# dummy for bypass the batch sizes
             print ('Loading model at episode: ', self.load_episode)
             model = T.load(self.dirPath + str(self.load_episode) + '.pt')
             model.eval()
@@ -269,7 +271,7 @@ if __name__ == '__main__':
             get_action.data = [action, score, reward]
             pub_get_action.publish(get_action)
 
-            if t >= 500: #take so long to reach goal: timeout
+            if t >= 50000: #take so long to reach goal: timeout
                 rospy.loginfo("Time out!!")
                 done = True
 

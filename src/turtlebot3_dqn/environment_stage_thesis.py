@@ -96,7 +96,7 @@ class Env():
             ob_reward = -5
         else:
             ob_reward = 0
-
+        #TODO: add time to reward
         reward = ((round(yaw_reward[action] * 5, 2)) * distance_rate) + ob_reward
 
         if done:
