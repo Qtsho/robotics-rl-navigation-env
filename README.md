@@ -6,12 +6,16 @@ For testing this env, I used DQN for robot mapless navigation. The implementatio
 
 
 
+
+
 Dependencies: 
 
-Gazebo >9.x
+- Gazebo >9.x
 
-Turtlebot description
+- Turtlebot description
 
-innoks heros description
+- innoks heros description
 
-
+Tutorial:
+- run gazebo simulation env: turtlebot/innok
+- run agent node which use dqn. Can resume from trained episode
