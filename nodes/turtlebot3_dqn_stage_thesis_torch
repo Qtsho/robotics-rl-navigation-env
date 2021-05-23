@@ -125,7 +125,7 @@ class ReinforceAgent():
         self.result = Float32MultiArray()
 
         self.load_model = True
-        self.load_episode = 250
+        self.load_episode = 1000
         self.state_size = state_size
         self.observation_space = (self.state_size,)
 
@@ -163,8 +163,9 @@ class ReinforceAgent():
             self.epsilon = 0.3
             self.global_step = self.load_episode# dummy for bypass the batch sizes
             print ('Loading model at episode: ', self.load_episode)
-            model = T.load(self.dirPath + str(self.load_episode) + '.pt')
-            model.eval()
+            self.model = T.load(self.dirPath + str(self.load_episode) + '.pt')
+            self.model.eval()
+            print ("Load model state dict: ", self.model.state_dict())
             # TODO: Load previos epsilon self.epsilon = 0.99 
         
         
@@ -181,7 +182,7 @@ class ReinforceAgent():
             actions = self.model(state) # pass to dqn, this is q value, same as self.model.forward(state)
             
             action =T.argmax(actions).item() # Tien: item will take the tensor back to env: interger 
-            print ("Action chose:",  action)
+            #print ("Action chose:",  action)
         return action
 
     
@@ -271,7 +272,7 @@ if __name__ == '__main__':
             get_action.data = [action, score, reward]
             pub_get_action.publish(get_action)
 
-            if t >= 50000: #take so long to reach goal: timeout
+            if t >= 500: #take so long to reach goal: timeout 500 default
                 rospy.loginfo("Time out!!")
                 done = True
 

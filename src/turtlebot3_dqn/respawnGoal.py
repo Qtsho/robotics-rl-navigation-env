@@ -25,6 +25,10 @@ from gazebo_msgs.srv import SpawnModel, DeleteModel
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Pose
 
+#add movebase goal
+import actionlib
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+
 class Respawn():
     def __init__(self):
         self.modelPath = os.path.dirname(os.path.realpath(__file__))
@@ -47,8 +51,32 @@ class Respawn():
         self.last_goal_y = self.init_goal_y
         self.last_index = 0
         self.sub_model = rospy.Subscriber('gazebo/model_states', ModelStates, self.checkModel)
+        
+        self.client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
         self.check_model = False
         self.index = 0
+        self.pubGoal = False
+
+    #Pub movebase goal
+    def publishGoal (self, pubGoal):
+        if pubGoal:
+            client.wait_for_server()
+            goal = MoveBaseGoal()
+            goal.target_pose.header.frame_id = "map"
+            goal.target_pose.header.stamp = rospy.Time.now()
+            goal.target_pose.pose.position.x = self.goal_position.position.x
+            goal.target_pose.pose.position.x = self.goal_position.position.y
+            goal.target_pose.pose.orientation.w = 0
+
+            client.send_goal(goal)
+            wait = client.wait_for_result()
+            if not wait:
+                rospy.logerr("Action server not available!")
+                rospy.signal_shutdown("Action server not available!")
+            else:
+                return client.get_result()
+
+
 
     def checkModel(self, model):
         self.check_model = False
