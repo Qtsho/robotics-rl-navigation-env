@@ -2,7 +2,7 @@
 
 Navigation RL environment for turtlebot3 and innok heros skidsteer robot.
 
-For testing this env, I used DQN for robot mapless navigation. The implementation is in Pytorch with Replay Buffer and Target network.
+For testing this env, I used DQN [] for robot mapless navigation. The implementation is in Pytorch with Replay Buffer and Target network.
 
 
 
