@@ -9,6 +9,7 @@ For testing this env, I used DQN [] for robot mapless navigation. The implementa
 
 
 Dependencies: 
+- ROS noetic
 
 - Gazebo >9.x
 
