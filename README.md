@@ -15,6 +15,10 @@ For testing this env, I used DQN [] for robot mapless navigation. The implementa
 
 
 ## Technologies
+### UML Clasa Diagramm
+
+![image](https://user-images.githubusercontent.com/37075262/140491125-b6e102ff-fbe9-4d4f-986f-d742c8575cf1.png)
+
 
 Dependencies: 
 - ROS noetic
